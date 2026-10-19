@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Niamh Considine Surf School Rebooking App</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    background:#eef5fa;
+    color:#123;
+    padding-bottom:90px;
+}
+
+.hero{
+    height:220px;
+    background:
+    linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)),
+    url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1500&q=80");
+    background-size:cover;
+    background-position:center;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    color:#fff;
+    padding:20px;
+}
+
+.hero h1{
+    font-size:2rem;
+    margin-bottom:8px;
+}
+
+.hero p{
+    font-size:1rem;
+}
+
+.view{
+    display:none;
+    padding:12px;
+}
+
+.active{
+    display:block;
+}
+
+.card{
+    background:#fff;
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+.session-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.big-btn{
+    width:100%;
+    border:none;
+    border-radius:14px;
+    padding:18px;
+    font-size:18px;
+    font-weight:bold;
+    margin-top:10px;
+    cursor:pointer;
+    min-height:60px;
+}
+
+.cancel-btn{
+    background:#d93025;
+    color:white;
+}
+
+.rebook-btn{
+    background:#0c9b50;
+    color:white;
+}
+
+.option-btn{
+    background:#0077cc;
+    color:white;
+    margin-top:8px;
+}
+
+.room{
+    color:#0c9b50;
+    font-weight:bold;
+}
+
+.warning{
+    background:#fff8db;
+    border-left:8px solid orange;
+}
+
+.danger{
+    background:#ffe0e0;
+    border-left:8px solid red;
+}
+
+.metric{
+    font-size:42px;
+    color:#0077cc;
+    font-weight:bold;
+}
+
+.money{
+    color:#0c9b50;
+}
+
+.small{
+    color:#666;
+    font-size:13px;
+}
+
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:white;
+    display:flex;
+    border-top:2px solid #ddd;
+}
+
+.nav-btn{
+    flex:1;
+    border:none;
+    background:white;
+    padding:18px 8px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.nav-btn.active-nav{
+    background:#0077cc;
+    color:white;
+}
+
+.empty{
+    text-align:center;
+    color:#666;
+    padding:25px;
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+    <div>
+        <h1>🏄 Niamh Surf School</h1>
+        <p>Weather Cancellation & Rebooking Manager</p>
+    </div>
+</div>
+
+<!-- TODAY VIEW -->
+<div id="todayView" class="view active"></div>
+
+<!-- REBOOK VIEW -->
+<div id="rebookView" class="view"></div>
+
+<!-- MONEY VIEW -->
+<div id="moneyView" class="view"></div>
+
+<!-- NAV -->
+<div class="bottom-nav">
+    <button class="nav-btn active-nav" onclick="showView('today')">Today</button>
+    <button class="nav-btn" onclick="showView('rebook')">Rebook</button>
+    <button class="nav-btn" onclick="showView('money')">Money</button>
+</div>
+
+<script>
+
+const STORAGE_KEY="surf_school_data_v1";
+
+function seedData(){
+return {
+sessions:[
+{id:1,time:"09:00",capacity:12,bookings:[1,2]},
+{id:2,time:"10:30",capacity:12,bookings:[3,4]},
+{id:3,time:"12:00",capacity:12,bookings:[5,6]},
+{id:4,time:"13:30",capacity:12,bookings:[7]},
+{id:5,time:"15:00",capacity:12,bookings:[8]},
+{id:6,time:"16:30",capacity:12,bookings:[]}
+],
+
+bookings:[
+{id:1,name:"Aoife Murphy",group:3,contact:"0851111111",sessionId:1,status:"booked"},
+{id:2,name:"Sean Kelly",group:2,contact:"0852222222",sessionId:1,status:"booked"},
+{id:3,name:"Emma Byrne",group:4,contact:"0853333333",sessionId:2,status:"booked"},
+{id:4,name:"Tom Nolan",group:2,contact:"0854444444",sessionId:2,status:"booked"},
+{id:5,name:"Lucy Walsh",group:5,contact:"0855555555",sessionId:3,status:"booked"},
+{id:6,name:"David Ryan",group:1,contact:"0856666666",sessionId:3,status:"booked"},
+{id:7,name:"Sarah Doyle",group:3,contact:"0857777777",sessionId:4,status:"booked"},
+{id:8,name:"Ben O'Brien",group:2,contact:"0858888888",sessionId:5,status:"booked"}
+]
+}
+}
+
+let data = loadData();
+
+function loadData(){
+let stored = localStorage.getItem(STORAGE_KEY);
+if(stored) return JSON.parse(stored);
+
+let d = seedData();
+localStorage.setItem(STORAGE_KEY,JSON.stringify(d));
+return d;
+}
+
+function saveData(){
+localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+}
+
+function sessionPeople(session){
+return session.bookings.reduce((a,id)=>{
+let b=data.bookings.find(x=>x.id===id);
+return a+(b?b.group:0);
+},0);
+}
+
+function freePlaces(session){
+return session.capacity-sessionPeople(session);
+}
+
+function cancelSession(id){
+
+let session=data.sessions.find(s=>s.id===id);
+
+session.bookings.forEach(bid=>{
+let booking=data.bookings.find(b=>b.id===bid);
+
+booking.status="waiting";
+booking.waitingSince=Date.now();
+booking.sessionId=null;
+});
+
+session.bookings=[];
+
+saveData();
+render();
+}
+
+function rebookBooking(id,newSessionId){
+
+let booking=data.bookings.find(b=>b.id===id);
+let session=data.sessions.find(s=>s.id===newSessionId);
+
+session.bookings.push(id);
+
+booking.sessionId=newSessionId;
+booking.status="booked";
+delete booking.waitingSince;
+
+saveData();
+render();
+}
+
+function availableSessions(groupSize){
+
+return data.sessions.filter(s=>freePlaces(s)>=groupSize).slice(0,3);
+}
+
+function waitingBookings(){
+return data.bookings.filter(b=>b.status==="waiting");
+}
+
+function valueAtRisk(){
+let people=waitingBookings()
+.reduce((sum,b)=>sum+b.group,0);
+
+return people*45;
+}
+
+function renderToday(){
+
+let el=document.getElementById("todayView");
+
+el.innerHTML="<h2 style='margin-bottom:12px'>Today's Sessions</h2>";
+
+data.sessions.forEach(session=>{
+
+el.innerHTML+=`
+<div class="card">
+    <div class="session-header">
+        <h3>${session.time}</h3>
+        <div class="room">${freePlaces(session)} places free</div>
+    </div>
+
+    <p>${sessionPeople(session)} / ${session.capacity} booked</p>
+
+    <button class="big-btn cancel-btn"
+    onclick="cancelSession(${session.id})">
+    Cancel Session
+    </button>
+</div>`;
+});
+}
+
+function renderRebook(){
+
+let el=document.getElementById("rebookView");
+
+let waiting=waitingBookings();
+
+let html="<h2 style='margin-bottom:12px'>To Rebook</h2>";
+
+if(waiting.length===0){
+html+=`<div class="card empty">No bookings waiting for rebooking ✅</div>`;
+}
+
+waiting.forEach(b=>{
+
+let ageHours=(Date.now()-b.waitingSince)/36e5;
+
+let cls=ageHours>48?"danger":"warning";
+
+html+=`
+<div class="card ${cls}">
+    <h3>${b.name}</h3>
+
+    <p>Group Size: ${b.group}</p>
+    <p>Contact: ${b.contact}</p>
+
+    <div class="small">
+    Waiting ${Math.floor(ageHours)} hours
+    </div>
+`;
+
+availableSessions(b.group).forEach(s=>{
+
+html+=`
+<button class="big-btn option-btn"
+onclick="rebookBooking(${b.id},${s.id})">
+Move to ${s.time}
+(${freePlaces(s)} free)
+</button>
+`;
+});
+
+html+="</div>";
+});
+
+el.innerHTML=html;
+}
+
+function renderMoney(){
+
+let waiting=waitingBookings();
+
+document.getElementById("moneyView").innerHTML=`
+<h2 style="margin-bottom:12px">Money At Risk</h2>
+
+<div class="card">
+    <div class="metric">${waiting.length}</div>
+    <div>Bookings Waiting To Rebook</div>
+</div>
+
+<div class="card">
+    <div class="metric money">€${valueAtRisk()}</div>
+    <div>Revenue At Risk</div>
+</div>
+
+<div class="card">
+        <h3>Assumptions</h3>
+        <p>Lesson Value: €45 per person</p>
+        <p>Weather cancellations approximately 1 day in 4</p>
+        <p>Bookings not rebooked are considered revenue at risk</p>
+</div>
+`;
+}
+
+function render(){
+renderToday();
+renderRebook();
+renderMoney();
+}
+
+function showView(view){
+
+document.querySelectorAll(".view")
+.forEach(v=>v.classList.remove("active"));
+
+document.querySelectorAll(".nav-btn")
+.forEach(v=>v.classList.remove("active-nav"));
+
+if(view==="today"){
+document.getElementById("todayView").classList.add("active");
+document.querySelectorAll(".nav-btn")[0].classList.add("active-nav");
+}
+
+if(view==="rebook"){
+document.getElementById("rebookView").classList.add("active");
+document.querySelectorAll(".nav-btn")[1].classList.add("active-nav");
+}
+
+if(view==="money"){
+document.getElementById("moneyView").classList.add("active");
+document.querySelectorAll(".nav-btn")[2].classList.add("active-nav");
+}
+}
+
+render();
+
+</script>
+
+</body>
+</html>
